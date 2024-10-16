@@ -1,15 +1,26 @@
+import csv
+
 import numpy as np
 import os
 import re
-
 from matplotlib import pyplot as plt
 
 d = 1.5/100
 r = 2
 f = 24e9
-
 c = 299792458  # m/s
 k = f*2*np.pi/c  # rad/m
+
+
+def spherical_to_cartesian(spherical_coords):
+    r = spherical_coords[:, 0]
+    theta = spherical_coords[:, 1]  # azimuthal angle (-180 to +180)
+    phi = spherical_coords[:, 2]    # polar angle (-90 to +90)
+    x = r * np.cos(phi) * np.cos(theta)
+    y = r * np.cos(phi) * np.sin(theta) + d / 2
+    z = r * np.sin(phi) + d / 2
+    cartesian_coords = np.vstack((x, y, z)).T
+    return cartesian_coords
 
 
 def process_file(file_path):
@@ -67,17 +78,18 @@ def process_folder(base_path):
 
 
 # Example usage
-folder_path = r"C:\Users\titiv\OneDrive - Danmarks Tekniske Universitet\DTU\Thesis\sim_results\ps_1"
+folder_path = r"C:\Users\titiv\OneDrive - Danmarks Tekniske Universitet\DTU\Thesis\sim_results\PEC_movement_normal"
 
 
 received = process_folder(folder_path)
-print(received)
-
 zero_phase = np.angle(np.exp(1j*r**2*k))
 
-phase_center = np.array((-np.unwrap(np.angle(received[:, 0]) + zero_phase)/k/2,
-                         d / 2 + r / d / k * np.unwrap(np.angle(received[:, 1]) - np.angle(received[:, 0])),
-                         d / 2 + r / d / k * np.unwrap(np.angle(received[:, 2]) - np.angle(received[:, 0])))).T
+phase_center_sph = np.array((-np.unwrap(np.angle(received[:, 0]) + zero_phase)/k/2 + r,
+                             np.arcsin(np.unwrap(np.angle(received[:, 1]) - np.angle(received[:, 0])) / k / d),
+                             np.arcsin(np.unwrap(np.angle(received[:, 2]) - np.angle(received[:, 0])) / k / d))).T
+
+
+phase_center = spherical_to_cartesian(phase_center_sph)
 
 y = np.linspace(0, 0.1, 20, True)
 
@@ -85,14 +97,14 @@ fig, axs = plt.subplots(4, figsize=(9, 9))
 
 # x
 axs[0].set_title('X Coordinate error')
-axs[0].plot(y * 100, phase_center[:, 0] * 100, 'g')
+axs[0].plot(y * 100, (phase_center[:, 0] - r) * 100, 'g')
 axs[0].set_xlabel('dx [cm]')
 axs[0].set_ylabel('Phase Center X [cm]')
 axs[0].grid()
 
 # y
 axs[1].set_title('Y Coordinate error')
-axs[1].plot(y * 100, (phase_center[:, 1]-y) * 100, 'g')
+axs[1].plot(y * 100, (phase_center[:, 1] - y) * 100, 'g')
 axs[1].set_xlabel('dx [cm]')
 axs[1].set_ylabel('Phase Center Y [cm]')
 axs[1].grid()
@@ -101,7 +113,7 @@ axs[1].grid()
 axs[2].set_title('Y Coordinate error')
 axs[2].plot(y * 100, phase_center[:, 2] * 100, 'g')
 axs[2].set_xlabel('dx [cm]')
-axs[2].set_ylabel('Phase Center Y [cm]')
+axs[2].set_ylabel('Phase Center Z [cm]')
 axs[2].grid()
 
 
@@ -113,15 +125,29 @@ axs[3].set_xlabel('dx [cm]')
 axs[3].set_ylabel('Power [dB]')
 axs[3].grid()
 
-fig2, axs2 = plt.subplots(2, figsize=(9, 9))
-axs2[0].plot(y * 100, np.angle(received[:, 0]), 'r')
-axs2[0].plot(y * 100, np.angle(received[:, 1]), 'g')
-axs2[0].plot(y * 100, np.angle(received[:, 2]), 'b')
-axs2[0].grid()
-
-axs2[1].plot(y * 100, np.angle(received[:, 1]) - np.angle(received[:, 0]), 'g')
-axs2[1].plot(y * 100, np.angle(received[:, 2]) - np.angle(received[:, 0]), 'b')
-axs2[1].grid()
+# fig2, axs2 = plt.subplots(2, figsize=(9, 9))
+# axs2[0].plot(y * 100, np.angle(received[:, 0]), 'r')
+# axs2[0].plot(y * 100, np.angle(received[:, 1]), 'g')
+# axs2[0].plot(y * 100, np.angle(received[:, 2]), 'b')
+# axs2[0].grid()
+#
+# axs2[1].plot(y * 100, np.angle(received[:, 1]) - np.angle(received[:, 0]), 'g')
+# axs2[1].plot(y * 100, np.angle(received[:, 2]) - np.angle(received[:, 0]), 'b')
+# axs2[1].grid()
 
 plt.show()
-pass
+
+data = np.column_stack((np.abs(phase_center[:, 0])-r,
+                        np.abs(phase_center[:, 1]-y),
+                        np.abs(20 * np.log10(np.abs(received[:, 0]) / p_max))))
+
+# Column names
+columns = ['ph_c_err_x', 'ph_c_err_y', 'power']
+
+# Save to CSV
+with open('output_h.csv', mode='w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(columns)  # Write column headers
+    writer.writerows(data)    # Write data rows
+
+print("Done")
