@@ -55,7 +55,7 @@ class PointScatterer:
         r1 = np.linalg.norm(pos - source.pos)
         r2 = np.linalg.norm(pos - recpos)
 
-        return np.exp(-1j * (r1 + r2) * source.k) * np.sqrt(self.RCS) / r1 / r2
+        return np.exp(-1j * (r1 + r2) * source.k) * np.sqrt(self.RCS) / r1 / r2  # /4pi is neglected
 
 
 class Source:

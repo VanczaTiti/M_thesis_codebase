@@ -6,10 +6,15 @@ import re
 from matplotlib import pyplot as plt
 
 d = 1.5/100
-r = 2
+r = 20
 f = 24e9
 c = 299792458  # m/s
 k = f*2*np.pi/c  # rad/m
+# E_i = -8.429668E1  # incident field strenth dB
+E_i = 0.1164005044E-03 - 0.9359531396E-04j  # incident field r=20
+# E_i = 0.1138130187E-02 - 0.9662416040E-03j  # incident field r=2
+
+text = ""
 
 
 def spherical_to_cartesian(spherical_coords):
@@ -78,7 +83,8 @@ def process_folder(base_path):
 
 
 # Example usage
-folder_path = r"C:\Users\titiv\OneDrive - Danmarks Tekniske Universitet\DTU\Thesis\sim_results\PEC_movement_normal"
+# folder_path = r"C:\Users\titiv\OneDrive - Danmarks Tekniske Universitet\DTU\Thesis\sim_results\corner_ref_" + text + "05_65_mm"
+folder_path = r"C:\Users\titiv\OneDrive - Danmarks Tekniske Universitet\DTU\Thesis\sim_results\Job_03"
 
 
 received = process_folder(folder_path)
@@ -88,41 +94,46 @@ phase_center_sph = np.array((-np.unwrap(np.angle(received[:, 0]) + zero_phase)/k
                              np.arcsin(np.unwrap(np.angle(received[:, 1]) - np.angle(received[:, 0])) / k / d),
                              np.arcsin(np.unwrap(np.angle(received[:, 2]) - np.angle(received[:, 0])) / k / d))).T
 
-
 phase_center = spherical_to_cartesian(phase_center_sph)
 
-y = np.linspace(0, 0.1, 20, True)
+# y = np.linspace(0, 0, 20, True)
+a = np.linspace(0.5, 10, len(phase_center), True)
+# a_rel = np.linspace(0.005, 0.065, len(phase_center), True) * f / c
 
 fig, axs = plt.subplots(4, figsize=(9, 9))
 
 # x
 axs[0].set_title('X Coordinate error')
-axs[0].plot(y * 100, (phase_center[:, 0] - r) * 100, 'g')
+axs[0].plot(a, (phase_center[:, 0] - r) * 100, 'g')
+# axs[0].plot(y / 0.0125, np.angle(received[:, 0]), 'g')
+
 axs[0].set_xlabel('dx [cm]')
 axs[0].set_ylabel('Phase Center X [cm]')
 axs[0].grid()
 
 # y
 axs[1].set_title('Y Coordinate error')
-axs[1].plot(y * 100, (phase_center[:, 1] - y) * 100, 'g')
-axs[1].set_xlabel('dx [cm]')
-axs[1].set_ylabel('Phase Center Y [cm]')
+axs[1].plot(a, (phase_center[:, 1]) * 100, 'g')
+axs[1].set_xlabel('side length [cm]')
+axs[1].set_ylabel('[cm]')
 axs[1].grid()
 
 # y
 axs[2].set_title('Y Coordinate error')
-axs[2].plot(y * 100, phase_center[:, 2] * 100, 'g')
-axs[2].set_xlabel('dx [cm]')
-axs[2].set_ylabel('Phase Center Z [cm]')
+axs[2].plot(a, phase_center[:, 2] * 100, 'g')
+axs[2].set_xlabel('side length [cm]')
+axs[2].set_ylabel('[cm]')
 axs[2].grid()
 
 
 # power
-p_max = np.max(received[:, 0])
-axs[3].set_title('Normalised received power')
-axs[3].plot(y * 100, 20 * np.log10(np.abs(received[:, 0]) / p_max), 'r')
-axs[3].set_xlabel('dx [cm]')
-axs[3].set_ylabel('Power [dB]')
+# signal_max = np.max(received[:, 0])
+axs[3].set_title('RCS [dB (m2)]')
+axs[3].plot(a, 20 * np.log10(np.abs(received[:, 0]/E_i*np.sqrt(r**2*4*np.pi))), 'r')
+axs[3].plot(a, 10 * np.log10((a/100)**4*3.14/3/0.0125**2), 'g')
+axs[3].set_xlabel('side length [cm]')
+# axs[3].set_ylabel('Power [dB]')
+axs[3].set_ylabel('Power [dBm]')
 axs[3].grid()
 
 # fig2, axs2 = plt.subplots(2, figsize=(9, 9))
@@ -137,15 +148,19 @@ axs[3].grid()
 
 plt.show()
 
-data = np.column_stack((np.abs(phase_center[:, 0])-r,
-                        np.abs(phase_center[:, 1]-y),
-                        np.abs(20 * np.log10(np.abs(received[:, 0]) / p_max))))
+data = np.column_stack((a,
+                        (phase_center[:, 0]-r) * 100,
+                        phase_center[:, 1] * 100,
+                        phase_center[:, 2] * 100,
+                        # np.abs(20 * np.log10(np.abs(received[:, 0]) / signal_max))))
+                        20 * np.log10(np.abs(received[:, 0]/E_i*np.sqrt(r**2*4*np.pi)))))
+
 
 # Column names
-columns = ['ph_c_err_x', 'ph_c_err_y', 'power']
+columns = ['size', text + 'ph_c_err_x', text + 'ph_c_err_y', text + 'ph_c_err_z', text + 'RCS']
 
 # Save to CSV
-with open('output_h.csv', mode='w', newline='') as file:
+with open('output.csv', mode='w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow(columns)  # Write column headers
     writer.writerows(data)    # Write data rows
