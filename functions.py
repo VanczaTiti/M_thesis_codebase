@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import re
+from scipy.signal import resample
 
 
 def spherical_to_cartesian(spherical_coords):
@@ -112,8 +113,25 @@ def rot_M_psi(psi):
 
 
 def unrotate_spherical(coords, theta, psi):
+    # return np.array([[np.matmul(rot_M_theta(-th), np.matmul(coords[i, j], rot_M_psi(-ps))) for j, ps in enumerate(psi)] for i, th in enumerate(theta)])
     return np.array([[np.matmul(rot_M_theta(-th), np.matmul(coords[i, j], rot_M_psi(-ps))) for j, ps in enumerate(psi)] for i, th in enumerate(theta)])
 
 
+def fft_resample_complex_with_padding(array, new_shape):
+    """
+    Resample a 3D complex-valued numpy array along first 2 axis
+    to a new shape using FFT resampling with edge padding.
+    """
+    # Pad the input array with constant values (default is 0)
+    old_shape = array.shape
+    padding = [(old_shape[i], old_shape[i]) if i < 2 else (0, 0) for i in range(len(array.shape))]
+    padded_array = np.pad(array, padding, mode='edge')
 
+    # Resample along each axis
+    resampled = padded_array
+    for axis, target_size in enumerate(new_shape[:2]):  # Only resample first 2 axes
+        resampled = resample(resampled, target_size*3+2, axis=axis)
+
+    # Crop or trim the resampled data to match the new shape in non-resized dimensions
+    return resampled[new_shape[0]:2*new_shape[0], new_shape[1]:2*new_shape[1], :]
 

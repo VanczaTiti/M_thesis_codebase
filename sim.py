@@ -9,7 +9,6 @@ d = 0.015  # distance between receivers
 r = 2  # distance to target
 N = 360
 
-
 # def rot_matrix(rot, deg=True):
 #     if deg:
 #         rot = np.deg2rad(rot)
@@ -84,14 +83,13 @@ def find_best_fit_phase_center(rot_angles, phase_center):
 
 source = Source(24E9, -2, 0)
 rec_poses = np.array([[-r, 0], [-r, d]])
-point_scatterers = [PointScatterer(0, 0, 0.0), PointScatterer(-5, 0, 0.05)]
-# point_scatterers = []
+# point_scatterers = [PointScatterer(0, 0, 0.0), PointScatterer(-5, 0, 0.05)]
+point_scatterers = [PointScatterer(0, 0, 0.0)]
 
-# for i in range(20):
-#     point_scatterers.append(PointScatterer(random.gauss(-20, 3),
-#                                            random.gauss(0, 0.02),
-#                                            random.gauss(0, 0.02),
-#                                            0))
+for i in range(20):
+    point_scatterers.append(PointScatterer(random.gauss(-20, 3),
+                                           random.gauss(0, 0.02),
+                                           random.gauss(0, 0.02)))
 
 rot_angles = np.linspace(0, 360, 360 * 3, endpoint=False)
 received = np.zeros((len(rot_angles), len(rec_poses)), dtype=complex)
@@ -124,8 +122,9 @@ fig, axs = plt.subplots(4, figsize=(9, 9))
 
 # x
 axs[0].set_title('X Coordinate')
-axs[0].plot(rot_angles, phase_center[:, 0] * 100, 'g')
-axs[0].plot(rot_angles, ph_c_err[:, 0] * 100, 'r')
+# axs[0].plot(rot_angles, phase_center[:, 0] * 100, 'g')
+# axs[0].plot(rot_angles, ph_c_err[:, 0] * 100, 'r')
+axs[0].plot(rot_angles, phase_center_sph[:, 0] * 100)
 axs[0].set_xlabel('Rotation Angle [degrees]')
 axs[0].set_ylabel('Phase Center X [cm]')
 axs[0].grid()
@@ -160,7 +159,7 @@ fig.suptitle('Phase Center Coordinates', fontsize=14)
 plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to make space for the super title
 
 # Start of your plotting code
-fig2, axs = plt.subplots(1, figsize=(6, 6))
+fig2, axs = plt.subplots(1, figsize=(5, 5))
 
 # Extract value, x, and y columns
 values = np.array([ps.RCS for ps in point_scatterers])
@@ -194,15 +193,24 @@ axs.grid()
 
 plt.show()
 
+# data = np.column_stack((np.real(rot_angles),
+#                         np.real(phase_center[:, 0]) * 100,
+#                         np.real(phase_center[:, 1]) * 100,
+#                         np.real(ph_c_err[:, 0]) * 100,
+#                         np.real(ph_c_err[:, 1]) * 100,
+#                         20 * np.log10(np.abs(received[:, 0]) / p_max)))
+#
+# # Column names
+# columns = ['rot_angles', 'ph_c_x', 'ph_c_y', 'ph_c_err_x', 'ph_c_err_y', 'power']
+
 data = np.column_stack((np.real(rot_angles),
-                        np.real(phase_center[:, 0]) * 100,
-                        np.real(phase_center[:, 1]) * 100,
+                        np.real(phase_center_sph[:, 0]) * 100,
                         np.real(ph_c_err[:, 0]) * 100,
                         np.real(ph_c_err[:, 1]) * 100,
                         20 * np.log10(np.abs(received[:, 0]) / p_max)))
 
 # Column names
-columns = ['rot_angles', 'ph_c_x', 'ph_c_y', 'ph_c_err_x', 'ph_c_err_y', 'power']
+columns = ['rot_angles', 'r',  'ph_c_err_x', 'ph_c_err_y', 'power']
 
 # Save to CSV
 with open('PS_sim_single_rotating.csv', mode='w', newline='') as file:
